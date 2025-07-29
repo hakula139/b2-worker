@@ -1,0 +1,14 @@
+name = "b2"
+main = "worker.ts"
+compatibility_date = "2025-07-29"
+
+routes = [{ pattern = "b2.hakula.xyz", custom_domain = true }]
+
+[vars]
+B2_HOSTNAME = "f004.backblazeb2.com"
+
+[observability.logs]
+enabled = true
+
+[placement]
+mode = "smart"
