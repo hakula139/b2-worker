@@ -1,13 +1,11 @@
 export default {
-  async fetch(request) {
-    const b2Hostname = 'f004.backblazeb2.com';
-
+  async fetch(request, env) {
     const url = new URL(request.url);
     const originalPath = url.pathname;
     const newPath = `/file${originalPath}`;
-    const newUrl = new URL(newPath, `https://${b2Hostname}`);
+    const newUrl = new URL(newPath, `https://${env.B2_HOSTNAME}`);
     const newRequest = new Request(newUrl, request);
-    newRequest.headers.set('Host', b2Hostname);
+    newRequest.headers.set('Host', env.B2_HOSTNAME);
 
     const response = await fetch(newRequest);
 
