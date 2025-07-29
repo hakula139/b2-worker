@@ -20,8 +20,10 @@ export default {
 
     const newResponse = new Response(response.body, response);
     // Split the filename into two parts: UUID and original filename
-    const originalFilename = originalPath.split('/').pop()?.split('_', 2).at(1);
-    if (originalFilename) {
+    const filename = originalPath.split('/').pop();
+    const filenameParts = filename?.split('_');
+    if (filenameParts && filenameParts.length > 1) {
+      const originalFilename = filenameParts.slice(1).join('_');
       // Set the Content-Disposition header to force the browser to download the file with the original filename
       newResponse.headers.set(
         'Content-Disposition',
