@@ -27,7 +27,7 @@ export default {
       // Set the Content-Disposition header to force the browser to download the file with the original filename
       newResponse.headers.set(
         'Content-Disposition',
-        `attachment; filename*=UTF-8''${encodeURIComponent(originalFilename)}`,
+        `attachment; filename*=UTF-8''${originalFilename}`,
       );
     }
 
