@@ -1,9 +1,24 @@
-import { ExecutionContext, ExportedHandler } from '@cloudflare/workers-types';
+import {
+  ExecutionContext,
+  ExportedHandler,
+  type IncomingRequestCfProperties,
+} from '@cloudflare/workers-types';
 
-export interface Env {
+interface Env {
   B2_HOSTNAME: string;
   UMAMI_ENDPOINT?: string;
   UMAMI_WEBSITE_ID?: string;
+}
+
+interface CloudflareRequest extends Request {
+  cf: IncomingRequestCfProperties;
+}
+
+interface ClientGeo {
+  ip?: string;
+  country?: string;
+  city?: string;
+  regionCode?: string;
 }
 
 interface UmamiEventPayload {
@@ -25,7 +40,10 @@ interface UmamiRequest {
 
 const getLogicalPath = (url: URL): string | undefined => {
   const logicalPath = url.searchParams.get('logical_path');
-  return logicalPath?.startsWith('/') ? logicalPath : `/${logicalPath}`;
+  if (!logicalPath) {
+    return undefined;
+  }
+  return logicalPath.startsWith('/') ? logicalPath : `/${logicalPath}`;
 };
 
 const getB2Search = (url: URL): string => {
@@ -44,17 +62,25 @@ const shouldTrackDownload = (request: Request, logicalPath: string): boolean => 
     return false;
   }
 
+  // Track both full downloads and first chunk of multi-threaded downloads.
+  // - No Range header: Simple browser download or curl / wget
+  // - Range: bytes=0-*: First chunk of multi-threaded download manager
+  // Note: Some download managers make both types of requests, causing duplicates.
   const rangeHeader = request.headers.get('range');
   if (!rangeHeader) {
     return true;
   }
 
-  // Only track once for multi-threaded downloads.
   const rangeMatch = rangeHeader.match(/bytes=(\d+)-/);
   return Boolean(rangeMatch && rangeMatch[1] === '0');
 };
 
-const trackDownload = async (request: Request, env: Env, path: string): Promise<void> => {
+const trackDownload = async (
+  request: Request,
+  env: Env,
+  path: string,
+  client: ClientGeo,
+): Promise<void> => {
   if (!env.UMAMI_ENDPOINT || !env.UMAMI_WEBSITE_ID) {
     return;
   }
@@ -63,10 +89,7 @@ const trackDownload = async (request: Request, env: Env, path: string): Promise<
   const userAgent = request.headers.get('user-agent') ?? '';
   const referrer = request.headers.get('referer') ?? '';
   const acceptLanguage = request.headers.get('accept-language') || 'en-US';
-  const ip = request.headers.get('cf-connecting-ip') ?? '';
-  const country = request.headers.get('cf-ipcountry') ?? '';
-  const city = request.headers.get('cf-ipcity') ?? '';
-  const regionCode = request.headers.get('cf-regioncode') ?? '';
+  const { ip, country, city, regionCode } = client;
 
   const payload: UmamiRequest = {
     type: 'event',
@@ -88,7 +111,7 @@ const trackDownload = async (request: Request, env: Env, path: string): Promise<
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': userAgent,
-        ...(ip ? { 'CF-Connecting-IP': ip, 'X-Forwarded-For': ip, 'X-Real-IP': ip } : {}),
+        ...(ip ? { 'CF-Connecting-IP': ip, 'X-Real-IP': ip, 'X-Forwarded-For': ip } : {}),
         ...(country ? { 'CF-IPCountry': country } : {}),
         ...(city ? { 'CF-IPCity': city } : {}),
         ...(regionCode ? { 'CF-RegionCode': regionCode } : {}),
@@ -114,7 +137,15 @@ export default {
 
     // Track download with Umami.
     if (response.ok && logicalPath && shouldTrackDownload(request, logicalPath)) {
-      ctx.waitUntil(trackDownload(request, env, logicalPath));
+      const cf = (request as CloudflareRequest).cf;
+      const client: ClientGeo = {
+        ip: request.headers.get('cf-connecting-ip') ?? undefined,
+        country: cf.country ?? request.headers.get('cf-ipcountry') ?? undefined,
+        city: cf.city ?? request.headers.get('cf-ipcity') ?? undefined,
+        regionCode: cf.regionCode ?? request.headers.get('cf-regioncode') ?? undefined,
+      };
+
+      ctx.waitUntil(trackDownload(request, env, logicalPath, client));
     }
 
     return response;
