@@ -6,6 +6,8 @@ routes = [{ pattern = "b2.hakula.xyz", custom_domain = true }]
 
 [vars]
 B2_HOSTNAME = "s3.us-west-004.backblazeb2.com"
+UMAMI_ENDPOINT = "https://cloud.umami.is/api/send"
+UMAMI_WEBSITE_ID = "e9b01f7e-3e15-496c-aafc-322d6028dc06"
 
 [observability.logs]
 enabled = true
