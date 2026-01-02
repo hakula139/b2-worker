@@ -21,21 +21,19 @@ interface ClientGeo {
   regionCode?: string;
 }
 
-interface UmamiEventPayload {
+interface UmamiPageviewPayload {
+  website: string;
   hostname: string;
+  url: string;
+  title: string;
+  referrer?: string;
   screen: string;
   language: string;
-  url: string;
-  referrer?: string;
-  title: string;
-  website: string;
-  name: string;
-  data?: Record<string, unknown>;
 }
 
 interface UmamiRequest {
   type: 'event';
-  payload: UmamiEventPayload;
+  payload: UmamiPageviewPayload;
 }
 
 const getLogicalPath = (url: URL): string | undefined => {
@@ -78,35 +76,33 @@ const shouldTrackDownload = (request: Request, logicalPath: string): boolean => 
 const trackDownload = async (
   request: Request,
   env: Env,
-  path: string,
+  logicalPath: string,
   client: ClientGeo,
 ): Promise<void> => {
   if (!env.UMAMI_ENDPOINT || !env.UMAMI_WEBSITE_ID) {
     return;
   }
 
-  const url = new URL(request.url);
   const userAgent = request.headers.get('user-agent') ?? '';
-  const referrer = request.headers.get('referer') ?? '';
+  const referrer = request.headers.get('referer') ?? undefined;
   const acceptLanguage = request.headers.get('accept-language') || 'en-US';
   const { ip, country, city, regionCode } = client;
 
   const payload: UmamiRequest = {
     type: 'event',
     payload: {
-      hostname: url.hostname,
+      website: env.UMAMI_WEBSITE_ID,
+      hostname: 'cloud.hakula.xyz',
+      url: logicalPath,
+      title: logicalPath,
+      referrer,
       screen: '1920x1080',
       language: acceptLanguage.split(',')[0],
-      url: path,
-      referrer: referrer,
-      title: `Download: ${path}`,
-      website: env.UMAMI_WEBSITE_ID,
-      name: 'file-download',
     },
   };
 
   try {
-    await fetch(env.UMAMI_ENDPOINT, {
+    const response = await fetch(env.UMAMI_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -118,6 +114,10 @@ const trackDownload = async (
       },
       body: JSON.stringify(payload),
     });
+
+    if (!response.ok) {
+      console.error(`Umami rejected event: ${response.status}`, await response.text());
+    }
   } catch (error) {
     console.error('Failed to send Umami event:', error);
   }
