@@ -53,19 +53,22 @@ const getB2Search = (url: URL): string => {
   return b2Search ? `?${b2Search}` : '';
 };
 
-// Generate a consistent session ID for session tracking across the same day.
-const generateSessionId = async (ip: string, date: Date): Promise<string> => {
-  const dateStr = formatInTimeZone(date, 'Asia/Shanghai', 'yyyy-MM-dd');
-  const sessionKey = `${ip}|${dateStr}`;
-
+const hashToHex = async (input: string, length = 16): Promise<string> => {
   const encoder = new TextEncoder();
-  const data = encoder.encode(sessionKey);
+  const data = encoder.encode(input);
   const hash = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hash));
   return hashArray
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
-    .substring(0, 16);
+    .substring(0, length);
+};
+
+const getDateStr = (date: Date): string => formatInTimeZone(date, 'Asia/Shanghai', 'yyyy-MM-dd');
+
+const generateSessionId = async (ip: string, date: Date): Promise<string> => {
+  const dateStr = getDateStr(date);
+  return hashToHex(`${ip}|${dateStr}`, 16);
 };
 
 const shouldTrackDownload = (request: Request, logicalPath: string): boolean => {
@@ -73,21 +76,50 @@ const shouldTrackDownload = (request: Request, logicalPath: string): boolean => 
     return false;
   }
 
+  // Ignore README.md.
   if (logicalPath.endsWith('README.md')) {
     return false;
   }
 
-  // Track both full downloads and first chunk of multi-threaded downloads.
-  // - No Range header: Simple browser download or curl / wget
-  // - Range: bytes=0-*: First chunk of multi-threaded download manager
-  // Note: Some download managers make both types of requests, causing duplicates.
+  // Track full downloads and first chunk of multi-threaded downloads.
   const rangeHeader = request.headers.get('range');
   if (!rangeHeader) {
     return true;
   }
-
   const rangeMatch = rangeHeader.match(/bytes=(\d+)-/);
   return Boolean(rangeMatch && rangeMatch[1] === '0');
+};
+
+const DOWNLOAD_DEDUPE_TTL_SECONDS = 30;
+
+const generateDedupeKey = async (ip: string, logicalPath: string, date: Date): Promise<string> => {
+  const dateStr = getDateStr(date);
+  return hashToHex(`${ip}|${logicalPath}|${dateStr}`, 16);
+};
+
+// Deduplicate download events within a small time window.
+const shouldSendDownloadEvent = async (
+  logicalPath: string,
+  client: ClientGeo,
+): Promise<boolean> => {
+  const dedupeKey = await generateDedupeKey(client.ip ?? '', logicalPath, new Date());
+
+  const cacheKey = new Request(`https://cache-key.invalid/umami/${dedupeKey}`);
+  const cache = caches.default;
+
+  if (await cache.match(cacheKey)) {
+    return false;
+  }
+
+  await cache.put(
+    cacheKey,
+    new Response('1', {
+      headers: {
+        'Cache-Control': `max-age=${DOWNLOAD_DEDUPE_TTL_SECONDS}`,
+      },
+    }),
+  );
+  return true;
 };
 
 const trackDownload = async (
@@ -164,7 +196,10 @@ export default {
         regionCode: cf.regionCode ?? request.headers.get('cf-regioncode') ?? undefined,
       };
 
-      ctx.waitUntil(trackDownload(request, env, logicalPath, client));
+      if (await shouldSendDownloadEvent(logicalPath, client)) {
+        // Track download event in the background to avoid blocking the response.
+        ctx.waitUntil(trackDownload(request, env, logicalPath, client));
+      }
     }
 
     return response;
