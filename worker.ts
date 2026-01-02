@@ -29,6 +29,7 @@ interface UmamiPageviewPayload {
   referrer?: string;
   screen: string;
   language: string;
+  id?: string;
 }
 
 interface UmamiRequest {
@@ -49,6 +50,22 @@ const getB2Search = (url: URL): string => {
   b2Params.delete('logical_path');
   const b2Search = b2Params.toString();
   return b2Search ? `?${b2Search}` : '';
+};
+
+// Generate a consistent session ID for session tracking across the same day.
+const generateSessionId = async (ip: string, date: Date): Promise<string> => {
+  const dailyWindow = new Date(date);
+  dailyWindow.setHours(0, 0, 0, 0);
+  const sessionKey = `${ip}-${dailyWindow.toISOString()}`;
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(sessionKey);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hash));
+  return hashArray
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .substring(0, 16);
 };
 
 const shouldTrackDownload = (request: Request, logicalPath: string): boolean => {
@@ -87,6 +104,7 @@ const trackDownload = async (
   const referrer = request.headers.get('referer') ?? undefined;
   const acceptLanguage = request.headers.get('accept-language') || 'en-US';
   const { ip, country, city, regionCode } = client;
+  const sessionId = ip ? await generateSessionId(ip, new Date()) : undefined;
 
   const payload: UmamiRequest = {
     type: 'event',
@@ -98,6 +116,7 @@ const trackDownload = async (
       referrer,
       screen: '1920x1080',
       language: acceptLanguage.split(',')[0],
+      id: sessionId,
     },
   };
 
