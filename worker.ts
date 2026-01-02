@@ -3,6 +3,7 @@ import {
   ExportedHandler,
   type IncomingRequestCfProperties,
 } from '@cloudflare/workers-types';
+import { formatInTimeZone } from 'date-fns-tz';
 
 interface Env {
   B2_HOSTNAME: string;
@@ -54,9 +55,8 @@ const getB2Search = (url: URL): string => {
 
 // Generate a consistent session ID for session tracking across the same day.
 const generateSessionId = async (ip: string, date: Date): Promise<string> => {
-  const dailyWindow = new Date(date);
-  dailyWindow.setHours(0, 0, 0, 0);
-  const sessionKey = `${ip}-${dailyWindow.toISOString()}`;
+  const dateStr = formatInTimeZone(date, 'Asia/Shanghai', 'yyyy-MM-dd');
+  const sessionKey = `${ip}|${dateStr}`;
 
   const encoder = new TextEncoder();
   const data = encoder.encode(sessionKey);
@@ -101,7 +101,7 @@ const trackDownload = async (
   }
 
   const userAgent = request.headers.get('user-agent') ?? '';
-  const referrer = request.headers.get('referer') ?? undefined;
+  const referrer = request.headers.get('referer') ?? '';
   const acceptLanguage = request.headers.get('accept-language') || 'en-US';
   const { ip, country, city, regionCode } = client;
   const sessionId = ip ? await generateSessionId(ip, new Date()) : undefined;
@@ -116,7 +116,7 @@ const trackDownload = async (
       referrer,
       screen: '1920x1080',
       language: acceptLanguage.split(',')[0],
-      id: sessionId,
+      ...(sessionId ? { id: sessionId } : {}),
     },
   };
 

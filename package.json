@@ -10,6 +10,9 @@
     "upload": "wrangler versions upload",
     "check": "tsc --noEmit"
   },
+  "dependencies": {
+    "date-fns-tz": "^3.2.0"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260101.0",
     "typescript": "^5.9.3",
