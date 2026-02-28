@@ -9,6 +9,10 @@ B2_HOSTNAME = "s3.us-west-004.backblazeb2.com"
 UMAMI_ENDPOINT = "https://umami.hakula.xyz/api/send"
 UMAMI_WEBSITE_ID = "f32be3f6-7de7-4061-bd0b-5077daa7a7e1"
 
+# Set via `wrangler secret put`:
+# B2_ACCESS_KEY_ID     - B2 application key ID (for signing requests to private buckets)
+# B2_SECRET_ACCESS_KEY - B2 application key
+
 [observability.logs]
 enabled = true
 

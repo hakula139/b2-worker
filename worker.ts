@@ -1,3 +1,4 @@
+import { AwsClient } from 'aws4fetch';
 import {
   ExecutionContext,
   ExportedHandler,
@@ -7,6 +8,8 @@ import { formatInTimeZone } from 'date-fns-tz';
 
 interface Env {
   B2_HOSTNAME: string;
+  B2_ACCESS_KEY_ID?: string;
+  B2_SECRET_ACCESS_KEY?: string;
   UMAMI_ENDPOINT?: string;
   UMAMI_WEBSITE_ID?: string;
 }
@@ -37,6 +40,15 @@ interface UmamiRequest {
   type: 'event';
   payload: UmamiPageviewPayload;
 }
+
+// Extract S3 region from B2 hostname (e.g., "s3.us-west-004.backblazeb2.com" -> "us-west-004")
+const getRegion = (hostname: string): string => {
+  const match = hostname.match(/^s3\.(.+)\.backblazeb2\.com$/);
+  return match?.[1] ?? 'us-west-004';
+};
+
+// Check if the request already carries S3 pre-signed query parameters
+const isPresigned = (url: URL): boolean => url.searchParams.has('X-Amz-Signature');
 
 const getLogicalPath = (url: URL): string | undefined => {
   const logicalPath = url.searchParams.get('logical_path');
@@ -179,14 +191,28 @@ export default {
     const url = new URL(request.url);
     const logicalPath = getLogicalPath(url);
     const b2Search = getB2Search(url);
-    const newUrl = `https://${env.B2_HOSTNAME}${url.pathname}${b2Search}`;
+    const b2Url = `https://${env.B2_HOSTNAME}${url.pathname}${b2Search}`;
 
-    const newRequest = new Request(newUrl, request);
-    newRequest.headers.set('Host', env.B2_HOSTNAME);
+    let response: Response;
 
-    const response = await fetch(newRequest);
+    if (!isPresigned(url) && env.B2_ACCESS_KEY_ID && env.B2_SECRET_ACCESS_KEY) {
+      // Unsigned requests to private buckets: sign with B2 credentials
+      const aws = new AwsClient({
+        accessKeyId: env.B2_ACCESS_KEY_ID,
+        secretAccessKey: env.B2_SECRET_ACCESS_KEY,
+        region: getRegion(env.B2_HOSTNAME),
+        service: 's3',
+      });
+      const signedRequest = await aws.sign(b2Url, { method: request.method });
+      response = await fetch(signedRequest);
+    } else {
+      // Pre-signed requests (e.g., from Cloudreve) or no credentials configured: forward as-is
+      const b2Request = new Request(b2Url, request);
+      b2Request.headers.set('Host', env.B2_HOSTNAME);
+      response = await fetch(b2Request);
+    }
 
-    // Track download with Umami.
+    // Track download with Umami (Cloudreve only, triggered by logical_path param).
     if (response.ok && logicalPath && shouldTrackDownload(request, logicalPath)) {
       const cf = (request as CloudflareRequest).cf;
       const client: ClientGeo = {
