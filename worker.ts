@@ -252,8 +252,8 @@ export default {
       response = await fetch(b2Request);
     }
 
-    // Cache successful B2 responses at the edge.
-    if (response.ok && isCacheableRequest(request)) {
+    // Cache full responses at the edge (skip 206 Partial Content — Cache API rejects it).
+    if (response.status === 200 && isCacheableRequest(request)) {
       response = new Response(response.body, response);
       response.headers.set('Cache-Control', `public, max-age=${B2_CACHE_TTL_SECONDS}`);
       ctx.waitUntil(cache.put(request, response.clone()));
