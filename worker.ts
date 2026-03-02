@@ -216,7 +216,20 @@ export default {
         region: getRegion(env.B2_HOSTNAME),
         service: 's3',
       });
-      const signedRequest = await aws.sign(new Request(b2Url, request));
+      // Only forward S3-safe headers — Cloudflare-injected headers (x-real-ip,
+      // cf-connecting-ip, etc.) get signed by aws4fetch but stripped from the
+      // outbound fetch, causing B2 to reject the request with InvalidRequest.
+      const b2Headers = new Headers();
+      for (const name of ['range', 'if-none-match', 'if-modified-since']) {
+        const value = request.headers.get(name);
+        if (value) {
+          b2Headers.set(name, value);
+        }
+      }
+      const signedRequest = await aws.sign(b2Url, {
+        method: request.method,
+        headers: b2Headers,
+      });
       response = await fetch(signedRequest);
     } else {
       // Pre-signed requests (e.g., from Cloudreve) or no credentials configured: forward as-is
