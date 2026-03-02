@@ -50,6 +50,9 @@ const getRegion = (hostname: string): string => {
 // Check if the request already carries S3 pre-signed query parameters
 const isPresigned = (url: URL): boolean => url.searchParams.has('X-Amz-Signature');
 
+const isCacheableRequest = (request: Request): boolean =>
+  request.method === 'GET' || request.method === 'HEAD';
+
 const getLogicalPath = (url: URL): string | undefined => {
   const logicalPath = url.searchParams.get('logical_path');
   if (!logicalPath) {
@@ -102,6 +105,7 @@ const shouldTrackDownload = (request: Request, logicalPath: string): boolean => 
   return Boolean(rangeMatch && rangeMatch[1] === '0');
 };
 
+const B2_CACHE_TTL_SECONDS = 86400;
 const DOWNLOAD_DEDUPE_TTL_SECONDS = 30;
 
 const generateDedupeKey = async (ip: string, logicalPath: string, date: Date): Promise<string> => {
@@ -206,6 +210,16 @@ export default {
     const b2Search = getB2Search(url);
     const b2Url = `https://${env.B2_HOSTNAME}${url.pathname}${b2Search}`;
 
+    const cache = caches.default;
+
+    // Serve from edge cache if available.
+    if (isCacheableRequest(request)) {
+      const cachedResponse = await cache.match(request);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+    }
+
     let response: Response;
 
     if (!isPresigned(url) && env.B2_ACCESS_KEY_ID && env.B2_SECRET_ACCESS_KEY) {
@@ -236,6 +250,13 @@ export default {
       const b2Request = new Request(b2Url, request);
       b2Request.headers.set('Host', env.B2_HOSTNAME);
       response = await fetch(b2Request);
+    }
+
+    // Cache successful B2 responses at the edge.
+    if (response.ok && isCacheableRequest(request)) {
+      response = new Response(response.body, response);
+      response.headers.set('Cache-Control', `public, max-age=${B2_CACHE_TTL_SECONDS}`);
+      ctx.waitUntil(cache.put(request, response.clone()));
     }
 
     // Track download with Umami (Cloudreve only, triggered by logical_path param).
