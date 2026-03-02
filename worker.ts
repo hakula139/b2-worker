@@ -188,6 +188,19 @@ const trackDownload = async (
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // Short-circuit CORS preflight.
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+          'Access-Control-Allow-Headers': 'Range',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+
     const url = new URL(request.url);
     const logicalPath = getLogicalPath(url);
     const b2Search = getB2Search(url);
@@ -228,6 +241,14 @@ export default {
       }
     }
 
-    return response;
+    // Add CORS headers for cross-origin media playback.
+    const corsResponse = new Response(response.body, response);
+    corsResponse.headers.set('Access-Control-Allow-Origin', '*');
+    corsResponse.headers.set(
+      'Access-Control-Expose-Headers',
+      'Content-Length, Content-Range, Content-Type',
+    );
+
+    return corsResponse;
   },
 } satisfies ExportedHandler<Env>;
