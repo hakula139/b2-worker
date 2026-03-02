@@ -216,7 +216,7 @@ export default {
         region: getRegion(env.B2_HOSTNAME),
         service: 's3',
       });
-      const signedRequest = await aws.sign(b2Url, { method: request.method });
+      const signedRequest = await aws.sign(new Request(b2Url, request));
       response = await fetch(signedRequest);
     } else {
       // Pre-signed requests (e.g., from Cloudreve) or no credentials configured: forward as-is
