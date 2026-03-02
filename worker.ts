@@ -61,11 +61,21 @@ const getLogicalPath = (url: URL): string | undefined => {
   return logicalPath.startsWith('/') ? logicalPath : `/${logicalPath}`;
 };
 
+// Strip the `logical_path` param (Cloudreve analytics) from the raw query string
+// without round-tripping through URLSearchParams, which re-encodes with
+// application/x-www-form-urlencoded rules (%20 → +) and breaks AWS Signature V4
+// presigned URLs.
 const getB2Search = (url: URL): string => {
-  const b2Params = new URLSearchParams(url.search);
-  b2Params.delete('logical_path');
-  const b2Search = b2Params.toString();
-  return b2Search ? `?${b2Search}` : '';
+  const raw = url.search;
+  if (!raw) {
+    return '';
+  }
+  const cleaned = raw
+    .substring(1)
+    .split('&')
+    .filter((p) => !p.startsWith('logical_path='))
+    .join('&');
+  return cleaned ? `?${cleaned}` : '';
 };
 
 const hashToHex = async (input: string, length = 16): Promise<string> => {
