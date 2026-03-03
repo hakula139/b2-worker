@@ -53,6 +53,10 @@ const isPresigned = (url: URL): boolean => url.searchParams.has('X-Amz-Signature
 const isCacheableRequest = (request: Request): boolean =>
   request.method === 'GET' || request.method === 'HEAD';
 
+const isCacheableResponse = (response: Response): boolean =>
+  response.status === 200 &&
+  Number(response.headers.get('content-length') ?? 0) <= B2_CACHE_MAX_SIZE;
+
 const getLogicalPath = (url: URL): string | undefined => {
   const logicalPath = url.searchParams.get('logical_path');
   if (!logicalPath) {
@@ -116,6 +120,10 @@ const shouldTrackDownload = (request: Request, logicalPath: string): boolean => 
 };
 
 const B2_CACHE_TTL_SECONDS = 86400;
+// response.clone() tees the ReadableStream, holding the entire body in memory
+// until both branches are consumed. Workers have a 128 MB memory limit, so
+// caching large files kills the worker mid-stream.
+const B2_CACHE_MAX_SIZE = 100 * 1024 * 1024; // 100 MB
 const DOWNLOAD_DEDUPE_TTL_SECONDS = 30;
 
 const generateDedupeKey = async (ip: string, logicalPath: string, date: Date): Promise<string> => {
@@ -262,8 +270,10 @@ export default {
       response = await fetch(b2Request);
     }
 
-    // Cache full responses at the edge (skip 206 Partial Content — Cache API rejects it).
-    if (response.status === 200 && isCacheableRequest(request)) {
+    // Cache full responses at the edge.
+    // Skip 206 Partial Content (Cache API rejects it) and large files
+    // (response.clone() would exhaust the 128 MB worker memory limit).
+    if (isCacheableRequest(request) && isCacheableResponse(response)) {
       response = new Response(response.body, response);
       response.headers.set('Cache-Control', `public, max-age=${B2_CACHE_TTL_SECONDS}`);
       ctx.waitUntil(cache.put(request, response.clone()));
