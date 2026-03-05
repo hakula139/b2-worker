@@ -50,6 +50,34 @@ const getRegion = (hostname: string): string => {
 // Check if the request already carries S3 pre-signed query parameters
 const isPresigned = (url: URL): boolean => url.searchParams.has('X-Amz-Signature');
 
+// S3 authentication query parameters — must be stripped before re-signing
+const S3_AUTH_PARAMS = new Set([
+  'X-Amz-Algorithm',
+  'X-Amz-Content-Sha256',
+  'X-Amz-Credential',
+  'X-Amz-Date',
+  'X-Amz-Expires',
+  'X-Amz-Signature',
+  'X-Amz-SignedHeaders',
+  'X-Amz-Security-Token',
+]);
+
+// Strip S3 auth params from a raw query string, preserving response overrides
+// (e.g., response-content-disposition) and other non-auth params.
+// Operates on the raw string to avoid URLSearchParams re-encoding (%20 → +).
+const stripS3AuthParams = (raw: string): string => {
+  if (!raw) return '';
+  const cleaned = raw
+    .substring(1)
+    .split('&')
+    .filter((p) => {
+      const key = p.split('=')[0];
+      return !S3_AUTH_PARAMS.has(key);
+    })
+    .join('&');
+  return cleaned ? `?${cleaned}` : '';
+};
+
 const isCacheableRequest = (request: Request): boolean =>
   request.method === 'GET' || request.method === 'HEAD';
 
@@ -253,8 +281,15 @@ export default {
 
     let response: Response;
 
-    if (!isPresigned(url) && env.B2_ACCESS_KEY_ID && env.B2_SECRET_ACCESS_KEY) {
-      // Unsigned requests to private buckets: sign with B2 credentials
+    if (env.B2_ACCESS_KEY_ID && env.B2_SECRET_ACCESS_KEY) {
+      // Re-sign with our own B2 credentials.
+      // Pre-signed URLs from upstream (PeerTube, Cloudreve) embed the CDN host
+      // (b2.hakula.xyz) in their signature, which won't match when forwarded to
+      // B2 (s3.us-west-004.backblazeb2.com). Strip the auth params and re-sign,
+      // preserving response overrides like response-content-disposition.
+      const b2SearchFinal = isPresigned(url) ? stripS3AuthParams(b2Search) : b2Search;
+      const b2UrlFinal = `https://${env.B2_HOSTNAME}${url.pathname}${b2SearchFinal}`;
+
       const aws = new AwsClient({
         accessKeyId: env.B2_ACCESS_KEY_ID,
         secretAccessKey: env.B2_SECRET_ACCESS_KEY,
@@ -271,13 +306,13 @@ export default {
           b2Headers.set(name, value);
         }
       }
-      const signedRequest = await aws.sign(b2Url, {
+      const signedRequest = await aws.sign(b2UrlFinal, {
         method: request.method,
         headers: b2Headers,
       });
       response = await fetch(signedRequest);
     } else {
-      // Pre-signed requests (e.g., from Cloudreve) or no credentials configured: forward as-is
+      // No credentials configured: forward as-is (best effort for pre-signed URLs)
       const b2Request = new Request(b2Url, request);
       b2Request.headers.set('Host', env.B2_HOSTNAME);
       response = await fetch(b2Request);
