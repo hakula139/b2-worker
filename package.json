@@ -1,7 +1,7 @@
 {
   "name": "b2-worker",
   "description": "A Cloudflare Worker to support download files from Backblaze B2",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "main": "worker.ts",
   "scripts": {

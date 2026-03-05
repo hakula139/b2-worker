@@ -1,5 +1,5 @@
 name = "b2"
-main = "worker.ts"
+main = "src/worker.ts"
 compatibility_date = "2025-07-29"
 
 routes = [{ pattern = "b2.hakula.xyz", custom_domain = true }]
