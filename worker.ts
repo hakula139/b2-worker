@@ -119,6 +119,19 @@ const shouldTrackDownload = (request: Request, logicalPath: string): boolean => 
   return Boolean(rangeMatch && rangeMatch[1] === '0');
 };
 
+const CORS_HEADERS: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Content-Type',
+};
+
+const withCors = (response: Response): Response => {
+  const res = new Response(response.body, response);
+  for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    res.headers.set(key, value);
+  }
+  return res;
+};
+
 const B2_CACHE_TTL_SECONDS = 86400;
 // response.clone() tees the ReadableStream, holding the entire body in memory
 // until both branches are consumed. Workers have a 128 MB memory limit, so
@@ -234,7 +247,7 @@ export default {
     if (isCacheableRequest(request)) {
       const cachedResponse = await cache.match(request);
       if (cachedResponse) {
-        return cachedResponse;
+        return withCors(cachedResponse);
       }
     }
 
@@ -295,14 +308,6 @@ export default {
       }
     }
 
-    // Add CORS headers for cross-origin media playback.
-    const corsResponse = new Response(response.body, response);
-    corsResponse.headers.set('Access-Control-Allow-Origin', '*');
-    corsResponse.headers.set(
-      'Access-Control-Expose-Headers',
-      'Content-Length, Content-Range, Content-Type',
-    );
-
-    return corsResponse;
+    return withCors(response);
   },
 } satisfies ExportedHandler<Env>;
