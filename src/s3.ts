@@ -33,9 +33,13 @@ const isPresigned = (url: URL): boolean => url.searchParams.has('X-Amz-Signature
 const isPresignedExpired = (url: URL): boolean => {
   const date = url.searchParams.get('X-Amz-Date');
   const expires = url.searchParams.get('X-Amz-Expires');
-  if (!date || !expires) return false;
+  if (!date || !expires) {
+    return false;
+  }
   const m = date.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
-  if (!m) return false;
+  if (!m) {
+    return false;
+  }
   const issuedAt = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
   return Date.now() > issuedAt + Number(expires) * 1000;
 };
