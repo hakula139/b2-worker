@@ -27,6 +27,19 @@ const filterRawParams = (raw: string, predicate: (param: string) => boolean): st
 
 const isPresigned = (url: URL): boolean => url.searchParams.has('X-Amz-Signature');
 
+// Pre-signed URLs carry their expiry inline (X-Amz-Date + X-Amz-Expires). When a
+// stale downloader retries with a long-expired URL, B2 will 401; detecting that
+// locally short-circuits the round-trip.
+const isPresignedExpired = (url: URL): boolean => {
+  const date = url.searchParams.get('X-Amz-Date');
+  const expires = url.searchParams.get('X-Amz-Expires');
+  if (!date || !expires) return false;
+  const m = date.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+  if (!m) return false;
+  const issuedAt = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+  return Date.now() > issuedAt + Number(expires) * 1000;
+};
+
 // Strip `logical_path` (Cloudreve analytics param) from the raw query string.
 const stripLogicalPath = (raw: string): string =>
   filterRawParams(raw, (p) => !p.startsWith('logical_path='));
@@ -62,6 +75,9 @@ export const fetchFromB2 = async (request: Request, url: URL, env: Env): Promise
   const b2Url = `https://${env.B2_HOSTNAME}${url.pathname}${b2Search}`;
 
   if (isPresigned(url)) {
+    if (isPresignedExpired(url)) {
+      return new Response('Pre-signed URL expired', { status: 401 });
+    }
     // Pre-signed URLs (e.g., from Cloudreve) already carry valid S3 auth
     // params signed against B2's hostname. Forward as-is.
     const b2Request = new Request(b2Url, {
