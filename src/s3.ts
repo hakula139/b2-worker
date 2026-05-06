@@ -45,7 +45,9 @@ const pickS3SafeHeaders = (request: Request): Headers => {
   const headers = new Headers();
   for (const name of S3_SAFE_HEADERS) {
     const value = request.headers.get(name);
-    if (value) headers.set(name, value);
+    if (value) {
+      headers.set(name, value);
+    }
   }
   return headers;
 };

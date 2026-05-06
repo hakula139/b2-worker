@@ -60,7 +60,9 @@ const getDateStr = (date: Date): string => formatInTimeZone(date, 'Asia/Shanghai
 
 const getLogicalPath = (url: URL): string | undefined => {
   const logicalPath = url.searchParams.get('logical_path');
-  if (!logicalPath) return undefined;
+  if (!logicalPath) {
+    return undefined;
+  }
   return logicalPath.startsWith('/') ? logicalPath : `/${logicalPath}`;
 };
 
@@ -69,12 +71,18 @@ const getLogicalPath = (url: URL): string | undefined => {
 // -----------------------------------------------------------------------------
 
 const shouldTrackDownload = (request: Request, logicalPath: string): boolean => {
-  if (request.method !== 'GET') return false;
-  if (logicalPath.endsWith('README.md')) return false;
+  if (request.method !== 'GET') {
+    return false;
+  }
+  if (logicalPath.endsWith('README.md')) {
+    return false;
+  }
 
   // Track full downloads and first chunk of multi-threaded downloads.
   const rangeHeader = request.headers.get('range');
-  if (!rangeHeader) return true;
+  if (!rangeHeader) {
+    return true;
+  }
   const rangeMatch = rangeHeader.match(/bytes=(\d+)-/);
   return Boolean(rangeMatch && rangeMatch[1] === '0');
 };
@@ -94,7 +102,9 @@ const shouldSendDownloadEvent = async (
   const cacheKey = new Request(`https://cache-key.invalid/umami/${dedupeKey}`);
   const cache = caches.default;
 
-  if (await cache.match(cacheKey)) return false;
+  if (await cache.match(cacheKey)) {
+    return false;
+  }
 
   await cache.put(
     cacheKey,
@@ -111,7 +121,9 @@ const sendUmamiEvent = async (
   logicalPath: string,
   client: ClientGeo,
 ): Promise<void> => {
-  if (!env.UMAMI_ENDPOINT || !env.UMAMI_WEBSITE_ID) return;
+  if (!env.UMAMI_ENDPOINT || !env.UMAMI_WEBSITE_ID) {
+    return;
+  }
 
   const userAgent = request.headers.get('user-agent') ?? '';
   const referrer = request.headers.get('referer') ?? '';
@@ -168,7 +180,9 @@ export const trackIfNeeded = async (
   ctx: ExecutionContext,
 ): Promise<void> => {
   const logicalPath = getLogicalPath(url);
-  if (!response.ok || !logicalPath || !shouldTrackDownload(request, logicalPath)) return;
+  if (!response.ok || !logicalPath || !shouldTrackDownload(request, logicalPath)) {
+    return;
+  }
 
   const cf = (request as CloudflareRequest).cf;
   const client: ClientGeo = {
