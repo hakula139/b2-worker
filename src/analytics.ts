@@ -154,7 +154,7 @@ const sendUmamiEvent = async (
         ...(ip ? { 'CF-Connecting-IP': ip, 'X-Real-IP': ip, 'X-Forwarded-For': ip } : {}),
         ...(country ? { 'CF-IPCountry': country } : {}),
         ...(city ? { 'CF-IPCity': city } : {}),
-        ...(regionCode ? { 'CF-RegionCode': regionCode } : {}),
+        ...(regionCode ? { 'CF-Region-Code': regionCode } : {}),
       },
       body: JSON.stringify(payload),
     });
@@ -189,7 +189,7 @@ export const trackIfNeeded = async (
     ip: request.headers.get('cf-connecting-ip') ?? undefined,
     country: cf.country ?? request.headers.get('cf-ipcountry') ?? undefined,
     city: cf.city ?? request.headers.get('cf-ipcity') ?? undefined,
-    regionCode: cf.regionCode ?? request.headers.get('cf-regioncode') ?? undefined,
+    regionCode: cf.regionCode ?? request.headers.get('cf-region-code') ?? undefined,
   };
 
   if (await shouldSendDownloadEvent(logicalPath, client)) {
