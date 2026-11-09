@@ -27,8 +27,8 @@ Public configuration is in `wrangler.toml`:
 Secrets are set via Wrangler CLI (required for private bucket signing):
 
 ```bash
-wrangler secret put B2_ACCESS_KEY_ID
-wrangler secret put B2_SECRET_ACCESS_KEY
+pnpm wrangler secret put B2_ACCESS_KEY_ID
+pnpm wrangler secret put B2_SECRET_ACCESS_KEY
 ```
 
 ## Development
@@ -40,6 +40,11 @@ pnpm check   # Type-check
 
 ## Deployment
 
+Cloudflare Workers Builds deploys pushes to `main` to production and other branches to previews. Its pipeline installs dependencies with `pnpm i`, deploys with `pnpm run deploy`, and uploads versions with `pnpm run upload`. Manage it under _Workers & Pages → b2 → Settings → Build_. GitHub Actions runs code-quality checks, while Cloudflare owns deployment credentials.
+
+For manual deployment:
+
 ```bash
+pnpm wrangler login
 pnpm deploy
 ```
