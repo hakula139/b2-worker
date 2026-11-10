@@ -1,14 +1,14 @@
 backblaze
 backblazeb2
 cachix
+cf-ipcity
+cf-ipcountry
 cloudreve
 deadnix
 devkit
 direnv
 esbuild
 hakula
-ipcity
-ipcountry
 nixfmt
 nixos
 nixpkgs
