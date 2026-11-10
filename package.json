@@ -4,7 +4,6 @@
   "version": "1.2.1",
   "private": true,
   "type": "module",
-  "main": "worker.ts",
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev --port 8787",

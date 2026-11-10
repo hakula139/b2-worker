@@ -50,5 +50,5 @@ For manual deployment:
 
 ```bash
 pnpm wrangler login
-pnpm deploy
+pnpm run deploy
 ```
