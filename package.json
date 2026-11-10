@@ -6,12 +6,8 @@
   "type": "module",
   "main": "worker.ts",
   "scripts": {
-    "check": "tsc --noEmit",
     "deploy": "wrangler deploy",
     "dev": "wrangler dev --port 8787",
-    "format": "prettier --check .",
-    "lint": "eslint .",
-    "spellcheck": "cspell --no-progress \"**/*\"",
     "upload": "wrangler versions upload"
   },
   "dependencies": {
@@ -20,12 +16,16 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260101.0",
-    "cspell": "^10.0.0",
     "eslint": "^9.0.0",
-    "prettier": "^3.8.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.0.0",
     "wrangler": "^4.54.0"
   },
-  "packageManager": "pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017"
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^12.0.0",
+      "onFail": "error"
+    }
+  }
 }

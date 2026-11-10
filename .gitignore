@@ -1,4 +1,13 @@
+# Node.js
 node_modules/
+
+# Nix
+.direnv/
+/.pre-commit-config.yaml
+
+# Wrangler
+.dev.vars*
+.wrangler/
 
 # Editor / assistant local settings
 .agents/plans
