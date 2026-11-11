@@ -10,7 +10,10 @@ A Cloudflare Worker that proxies requests to [Backblaze B2](https://www.backblaz
 
 ## Setup
 
+The Nix dev shell provides Node.js and pnpm:
+
 ```bash
+nix develop
 pnpm install
 ```
 
@@ -33,9 +36,10 @@ pnpm wrangler secret put B2_SECRET_ACCESS_KEY
 
 ## Development
 
+Start a local dev server on port 8787:
+
 ```bash
-pnpm dev     # Start local dev server on port 8787
-pnpm check   # Type-check
+pnpm dev
 ```
 
 ## Deployment
@@ -46,5 +50,5 @@ For manual deployment:
 
 ```bash
 pnpm wrangler login
-pnpm deploy
+pnpm run deploy
 ```
