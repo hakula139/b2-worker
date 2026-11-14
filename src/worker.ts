@@ -1,8 +1,9 @@
 import type { ExecutionContext, ExportedHandler } from '@cloudflare/workers-types';
-import type { Env } from './types';
-import { fetchFromB2 } from './s3';
-import { getCached, cacheIfEligible } from './cache';
+
 import { trackIfNeeded } from './analytics';
+import { cacheIfEligible, getCached } from './cache';
+import { fetchFromB2 } from './s3';
+import type { Env } from './types';
 
 // -----------------------------------------------------------------------------
 // CORS
