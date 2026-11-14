@@ -7,7 +7,6 @@ Read [README.md](README.md) for setup, configuration, and deployment.
 - Use Web APIs available in Cloudflare Workers. The runtime has no `nodejs_compat` flag.
 - Preserve pre-signed S3 URLs without modification. Sign unsigned upstream requests with `aws4fetch` when private bucket credentials are available.
 - Keep cached object responses below 100 MB to fit the Worker's 128 MB memory limit.
-- The entry exports a default object satisfying `ExportedHandler<Env>`. `Env` lives in `src/types.ts`, with optional secrets so public buckets work without them.
 
 ## Operations
 

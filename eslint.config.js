@@ -24,7 +24,6 @@ export default defineConfig([
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
-      '@typescript-eslint/require-await': 'off',
     },
   },
   {
