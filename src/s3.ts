@@ -1,4 +1,5 @@
 import { AwsClient } from 'aws4fetch';
+
 import type { Env } from './types';
 
 // -----------------------------------------------------------------------------
@@ -36,7 +37,7 @@ const isPresignedExpired = (url: URL): boolean => {
   if (!date || !expires) {
     return false;
   }
-  const m = date.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(date);
   if (!m) {
     return false;
   }
@@ -54,7 +55,7 @@ const stripLogicalPath = (raw: string): string =>
 
 // Extract S3 region from B2 hostname (e.g., "s3.us-west-004.backblazeb2.com" → "us-west-004")
 const getRegion = (hostname: string): string => {
-  const match = hostname.match(/^s3\.(.+)\.backblazeb2\.com$/);
+  const match = /^s3\.(.+)\.backblazeb2\.com$/.exec(hostname);
   return match?.[1] ?? 'us-west-004';
 };
 
