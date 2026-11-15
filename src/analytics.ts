@@ -1,5 +1,6 @@
 import type { ExecutionContext, IncomingRequestCfProperties } from '@cloudflare/workers-types';
 import { formatInTimeZone } from 'date-fns-tz';
+
 import type { Env } from './types';
 
 // -----------------------------------------------------------------------------
@@ -83,8 +84,8 @@ const shouldTrackDownload = (request: Request, logicalPath: string): boolean => 
   if (!rangeHeader) {
     return true;
   }
-  const rangeMatch = rangeHeader.match(/bytes=(\d+)-/);
-  return Boolean(rangeMatch && rangeMatch[1] === '0');
+  const rangeMatch = /bytes=(\d+)-/.exec(rangeHeader);
+  return rangeMatch?.[1] === '0';
 };
 
 const generateSessionId = async (ip: string, date: Date): Promise<string> =>
@@ -127,7 +128,7 @@ const sendUmamiEvent = async (
 
   const userAgent = request.headers.get('user-agent') ?? '';
   const referrer = request.headers.get('referer') ?? '';
-  const acceptLanguage = request.headers.get('accept-language') || 'en-US';
+  const acceptLanguage = request.headers.get('accept-language');
   const { ip, country, city, regionCode } = client;
   const sessionId = ip ? await generateSessionId(ip, new Date()) : undefined;
 
@@ -140,7 +141,7 @@ const sendUmamiEvent = async (
       title: logicalPath,
       referrer,
       screen: '1920x1080',
-      language: acceptLanguage.split(',')[0],
+      language: acceptLanguage ? acceptLanguage.split(',')[0] : 'en-US',
       ...(sessionId ? { id: sessionId } : {}),
     },
   };

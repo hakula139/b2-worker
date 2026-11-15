@@ -2,3 +2,6 @@ allowBuilds:
   esbuild: true
   sharp: true
   workerd: true
+
+configDependencies:
+  '@hakula139/pnpm-plugin-devkit': 3.3.3+sha512-oRaOHCczLJfFSvzXOzlVybQaQwZaACnHzik1FUpDRE5keKk8glZPIt835MKVTIGQh5gARPVwKcFjRpYjyRCkig==
