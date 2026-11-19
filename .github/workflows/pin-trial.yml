@@ -22,6 +22,8 @@ jobs:
           cachix_auth_token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Pin dev shell
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
         uses: hakula139/devkit/.github/actions/cachix-pin@feat/cachix-pin-action
         with:
           pins: '{"devkit-trial-b2-worker-shell": ".#devShells.x86_64-linux.default"}'
