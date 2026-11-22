@@ -11,13 +11,13 @@
       "locked": {
         "lastModified": 1794739170,
         "narHash": "sha256-uf0xc9BR60h0GN517uDBXKmxDHjYSn98VB2S2y8sLR4=",
-        "owner": "hakula139",
+        "owner": "hakulab",
         "repo": "devkit",
         "rev": "a4be681bbb55cbe3ac13409284273b05947d3fd3",
         "type": "github"
       },
       "original": {
-        "owner": "hakula139",
+        "owner": "hakulab",
         "ref": "v3",
         "repo": "devkit",
         "type": "github"
