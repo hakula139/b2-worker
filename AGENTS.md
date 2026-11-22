@@ -10,9 +10,8 @@ Read [README.md](README.md) for setup, configuration, and deployment.
 
 ## Operations
 
-- Store secrets through Wrangler, with local values in ignored files. The Umami website ID is public configuration.
+- Store Worker secrets through Wrangler and deployment credentials in GitHub Actions secrets. Keep local values in ignored files. The Umami website ID is public configuration.
 - Development requests can reach live B2 and analytics endpoints. Runtime verification requires authorization before external requests.
-- Cloudflare Workers Builds owns deployment, so changes to the `package.json` scripts or `pnpm-lock.yaml` must keep its production and preview builds working.
 
 ## Verification
 

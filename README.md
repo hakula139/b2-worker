@@ -44,11 +44,15 @@ pnpm dev
 
 ## Deployment
 
-Cloudflare Workers Builds deploys pushes to `main` to production and other branches to previews. Its pipeline installs dependencies with `pnpm i`, deploys with `pnpm run deploy`, and uploads versions with `pnpm run upload`. Manage it under _Workers & Pages → b2 → Settings → Build_. GitHub Actions runs code-quality checks, while Cloudflare owns deployment credentials.
+GitHub Actions deploys pushes to `main` to production after `CI Result` passes. To redeploy the current commit, run the **CI** workflow manually on `main`.
 
-For manual deployment:
+Set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as repository secrets for GitHub Actions. The token must have permission to deploy the `b2` Worker in that account.
+
+To deploy from a local checkout, run these commands in the dev shell.
 
 ```bash
 pnpm wrangler login
 pnpm run deploy
 ```
+
+Pull requests run CI checks. To stage a Worker version without deploying it, run `pnpm run upload` from a local checkout.
