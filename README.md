@@ -56,3 +56,7 @@ pnpm run deploy
 ```
 
 Pull requests run CI checks. To stage a Worker version without deploying it, run `pnpm run upload` from a local checkout.
+
+## License
+
+Copyright (c) 2025-2026 [Hakula](https://hakula.xyz). Licensed under the [MIT License](LICENSE).
